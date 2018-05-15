@@ -39,13 +39,15 @@
 // the includes
 
 // drivers
-
+#include <stdio.h>
 // modules
 
 // platforms
 #include "headers/hal.h"
 #include "headers/user.h"
 #include "headers/hal_obj.h"
+#include "headers/gpio.h"
+#include "headers/pie.h"
 
 #ifdef FLASH
 #pragma CODE_SECTION(HAL_setupFlash,"ramfuncs");
@@ -506,6 +508,28 @@ void HAL_enableDebugInt(HAL_Handle handle)
   return;
 } // end of HAL_enableDebugInt() function
 
+void HAL_enableXInt1(HAL_Handle handle)
+{
+    HAL_Obj *obj = (HAL_Obj *)handle;
+
+    //Register the interrupt event handler name
+    PIE_registerPieIntHandler(obj->pieHandle, PIE_GroupNumber_1, PIE_SubGroupNumber_4,
+                              (PIE_IntVec_t)&xint1ISR);
+
+    //enable the external interrupt in the PIE
+    PIE_enableExtInt(obj->pieHandle, CPU_ExtIntNumber_1);
+
+    //Set the external interrupt for the GPIO button
+    GPIO_setExtInt(obj->gpioHandle, GPIO_Number_12, CPU_ExtIntNumber_1);
+
+    //set polarity of external interrupt event to occur
+    PIE_setExtIntPolarity(obj->pieHandle, CPU_ExtIntNumber_1, PIE_ExtIntPolarity_RisingEdge);
+
+    //Enable the CPU interrupt corresponding to the group for Xint1
+    CPU_enableInt(obj->cpuHandle, CPU_IntNumber_1);
+
+    return;
+}
 
 void HAL_enableDrv(HAL_Handle handle)
 {
@@ -992,9 +1016,9 @@ void HAL_setupGpios(HAL_Handle handle)
   GPIO_setDirection(obj->gpioHandle,GPIO_Number_7,GPIO_Direction_Output);
 
   //set button GPIO
-  GPIO_setMode(myGpio, GPIO_Number_12, GPIO_12_Mode_GeneralPurpose);
-  GPIO_setDirection(myGpio, GPIO_Number_12, GPIO_Direction_Input);
-  GPIO_setPullUp(myGpio, GPIO_Number_12, GPIO_PullUp_Disable);
+  GPIO_setMode(obj->gpioHandle, GPIO_Number_12, GPIO_12_Mode_GeneralPurpose);
+  GPIO_setDirection(obj->gpioHandle, GPIO_Number_12, GPIO_Direction_Input);
+  GPIO_setPullUp(obj->gpioHandle, GPIO_Number_12, GPIO_PullUp_Disable);
 
   // SPI_SDI if JP4 is soldered, No Connection if JP4 is not soldered
   GPIO_setMode(obj->gpioHandle,GPIO_Number_16,GPIO_16_Mode_SPISIMOA);
@@ -1353,13 +1377,13 @@ void HAL_setDacParameters(HAL_Handle handle, HAL_DacData_t *pDacData)
 	pDacData->PeriodMax = PWMDAC_getPeriod(obj->pwmDacHandle[PWMDAC_Number_1]);
 
 	pDacData->offset[0] = _IQ(0.5);
-	pDacData->offset[1] = _IQ(0.5);
+	pDacData->offset[1] = _IQ(0.0);
 	pDacData->offset[2] = _IQ(0.0);
 	pDacData->offset[3] = _IQ(0.0);
 
-	pDacData->gain[0] = _IQ(1.0);
-	pDacData->gain[1] = _IQ(1.0);
-	pDacData->gain[2] = _IQ(1.0);
+	pDacData->gain[0] = _IQ(10.0);
+	pDacData->gain[1] = _IQ(10.0);
+	pDacData->gain[2] = _IQ(2.0);
 	pDacData->gain[3] = _IQ(1.0);
 
 	return;
